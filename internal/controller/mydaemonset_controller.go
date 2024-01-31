@@ -18,7 +18,8 @@ package controller
 
 import (
 	"context"
-
+	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,8 +49,46 @@ type MyDaemonsetReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *MyDaemonsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
-
 	// TODO(user): your logic here
+	fmt.Println("start controller...", req, req.Name, req.NamespacedName, req.Namespace)
+	myDS := &appsv1beta1.MyDaemonset{}
+	err := r.Client.Get(ctx, req.NamespacedName, myDS)
+	if err != nil {
+		fmt.Printf("err:%v\n", err)
+	}
+	nl := &v1.NodeList{}
+	if myDS.Spec.Image != "" {
+		err = r.Client.List(ctx, nl)
+		if err != nil {
+			fmt.Printf("err:%v\n", err)
+		}
+		for _, node := range nl.Items {
+			p := v1.Pod{
+				TypeMeta: ctrl.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Pod",
+				},
+				ObjectMeta: ctrl.ObjectMeta{
+					GenerateName: fmt.Sprintf("%s-", node.Name),
+					Namespace:    myDS.Namespace,
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: myDS.Spec.Image,
+							Name:  "container",
+						},
+					},
+					NodeName: node.Name,
+				},
+				Status: v1.PodStatus{},
+			}
+			err = r.Client.Create(ctx, &p)
+			if err != nil {
+				fmt.Printf("err:%v\n", err)
+			}
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
