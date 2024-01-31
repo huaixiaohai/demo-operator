@@ -7,4 +7,14 @@ layout:
 - go.kubebuilder.io/v4
 projectName: demo-operator
 repo: github.com/huaixiaohai/demo-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: huaixiaohai.com
+  group: apps
+  kind: MyDaemonset
+  path: github.com/huaixiaohai/demo-operator/api/v1beta1
+  version: v1beta1
 version: "3"
